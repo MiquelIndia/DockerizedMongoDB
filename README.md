@@ -2,49 +2,54 @@
 
 ## Getting Started
 
-This guide will help you set up a MongoDB database using Docker and interact with it using `mongosh`.
+This guide will help you set up a MongoDB database using Docker Compose with automated initialization and interact with it using `mongosh`.
 
 ### Prerequisites
 
-- [Docker](https://www.docker.com/get-started) installed on your machine
+- [Docker](https://www.docker.com/get-started) and Docker Compose installed on your machine
 - [mongosh](https://www.mongodb.com/try/download/shell) (MongoDB Shell) installed
 
-### 1. Create and Run MongoDB Container
+### Project Structure
+
+- `docker-compose.yml`: Docker Compose configuration
+- `Dockerfile`: Custom MongoDB image with initialization
+- `init-mongo.js`: MongoDB initialization script that creates a user and sample data
+- `README.md`: This guide
+
+### 1. Start MongoDB with Docker Compose
 
 ```bash
-docker run --name my-mongo -d -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=admin -e MONGO_INITDB_ROOT_PASSWORD=secret mongo:latest
+docker-compose up -d
 ```
 
-- `my-mongo`: Name of the container
-- `admin`: MongoDB root username
-- `secret`: MongoDB root password
+This will:
+- Build a custom MongoDB image (mongo:7.0 based)
+- Create a container named `mongo-dev`
+- Set up persistent data storage with a Docker volume
+- Run the initialization script that creates:
+  - A database called `mydatabase`
+  - A user `myuser` with password `mypassword`
+  - Sample data in `sampleCollection`
 
 ### 2. Connect to MongoDB Using mongosh
 
+#### Option 1: Connect as admin user
 ```bash
-mongosh "mongodb://admin:secret@localhost:27017"
+mongosh "mongodb://admin:adminpass@localhost:27017"
 ```
 
-### 3. Create a Database and Collection
+#### Option 2: Connect as the application user
+```bash
+mongosh "mongodb://myuser:mypassword@localhost:27017/mydatabase"
+```
+
+### 3. Query the Pre-loaded Data
+
+The initialization script automatically creates sample data. You can query it:
 
 ```js
 use mydatabase
-db.createCollection("users")
-```
-
-### 4. Insert Example Data
-
-```js
-db.users.insertMany([
-    { name: "Alice", age: 30 },
-    { name: "Bob", age: 25 }
-])
-```
-
-### 5. Query the Data
-
-```js
-db.users.find()
+db.sampleCollection.find()
 ```
 
 **Expected Output:**
@@ -55,11 +60,54 @@ db.users.find()
 ]
 ```
 
-### 6. Stop and Remove the Container
+### 4. Working with Additional Data
+
+You can add more collections and data as needed:
+
+```js
+db.createCollection("users")
+db.users.insertMany([
+    { name: "Charlie", age: 35 },
+    { name: "Diana", age: 28 }
+])
+```
+
+### 5. Stop and Clean Up
 
 ```bash
-docker stop my-mongo
-docker rm my-mongo
+# Stop the containers
+docker-compose down
+
+# Stop and remove containers with volumes (removes all data)
+docker-compose down -v
+```
+
+
+### Credentials
+
+- **Admin User**: `admin` / `adminpass`
+- **Application User**: `myuser` / `mypassword` (has readWrite access to `mydatabase`)
+- **Database**: `mydatabase`
+- **Container Name**: `mongo-dev`
+- **Port**: `27017`
+
+### Troubleshooting
+
+#### Check container status
+```bash
+docker-compose ps
+```
+
+#### View container logs
+```bash
+docker-compose logs mongo
+```
+
+#### Rebuild after changing Dockerfile or init script
+```bash
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
 ```
 
 ---
